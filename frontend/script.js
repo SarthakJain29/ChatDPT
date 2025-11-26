@@ -5,6 +5,10 @@ const askBtn = document.getElementById("ask");
 input?.addEventListener("keyup", handleEnter);
 askBtn.addEventListener("click", handleAsk);
 
+const loading = document.createElement('div');
+loading.className = 'my-6 animate-pulse'
+loading.textContent = "Thinking..."
+
 async function generate(text) {
   // 1. append msg to ui
   // 2. send it to the llm
@@ -15,12 +19,14 @@ async function generate(text) {
   chatContainer.appendChild(msg);
   input.value = "";
 
+  chatContainer.appendChild(loading);  
+
   const assistantResponse = await callServer(text);
-  console.log(assistantResponse);
 
   const assistantMsg = document.createElement("div");
   assistantMsg.textContent = assistantResponse;
   assistantMsg.className = "max-w-fit";
+  loading.remove();
   chatContainer.appendChild(assistantMsg);
 }
 
