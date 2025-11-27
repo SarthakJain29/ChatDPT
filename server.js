@@ -12,9 +12,12 @@ app.get("/", (req, res) => {
 });
 
 app.post("/chat", async (req, res) => {
-  const { message } = req.body;
+  const { message, threadId } = req.body;
+  if(!message || !threadId){
+    return res.status(400).json({message: 'Missing required fields'})
+  }
 
-  const result = await generate(message);
+  const result = await generate(message, threadId);
 
   res.json({ message: result });
 }); 

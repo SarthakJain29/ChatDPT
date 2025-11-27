@@ -2,14 +2,16 @@ import readline from "node:readline/promises";
 import Groq from "groq-sdk";
 import dotenv from "dotenv";
 import { tavily } from "@tavily/core";
+import NodeCache from "node-cache";
 
 dotenv.config();
 
 const tvly = tavily({ apiKey: process.env.TAVILY_API_KEY });
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const cache = new NodeCache({ stdTTL: 60 * 60 * 24 }); // cache data auto deleted after 24hrs
 
-export async function generate(userMessage) {
-  const messages = [
+export async function generate(userMessage, threadId) {
+  const baseMessages = [
     {
       role: "system",
       content: `You are a smart personal assistant.
@@ -37,13 +39,24 @@ current date and time: ${new Date().toUTCString()}`,
     },
   ];
 
+  const messages = cache.get(threadId) ?? baseMessages;
+  //checking if any messages exist in cache for this session id
   messages.push({
     role: "user",
     content: userMessage,
   });
 
+  const MAX_RETRIES = 5;
+  let count = 0;
+
   while (true) {
     //loop for tool-calling
+
+    if(count > MAX_RETRIES){
+        return "I could not find an appropriate answer, please try again!";
+    }
+    count++;
+
     const completions = await groq.chat.completions.create({
       temperature: 0,
       model: "llama-3.3-70b-versatile",
@@ -78,6 +91,7 @@ current date and time: ${new Date().toUTCString()}`,
 
     if (!toolCalls) {
       //if no more tool calls, it means llm has got final response
+      cache.set(threadId, messages); //updating cache
       return completions.choices[0].message.content;
     }
     for (const tool of toolCalls) {
